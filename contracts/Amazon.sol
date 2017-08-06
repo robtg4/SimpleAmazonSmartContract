@@ -42,17 +42,24 @@ contract Amazon {
     event Shipped (uint sku);
     event Received (uint sku);
 
-  modifier isOwner (address _owner) { if (msg.sender == _owner) _ ;}
-  modifier paidEnough(uint _value) { if (_value >= items[skuCount].price) _ ;}
-  modifier checkValue(uint _amount) { if (_amount > 0) _ ;}
+  modifier isOwner (address _owner) { require(msg.sender == _owner); _;}
+  modifier paidEnough(uint _value) { require(_value >= msg.value); _;}
+  modifier checkValue(uint _amount) {
+    //refund them after pay for item (why it is before, _ checks for logic fo func)
+    _;
+    if (msg.value > _amount) {
+        uint amountToRefund = msg.value - _amount;
+        items[skuCount].buyer.transfer(amountToRefund);
+    }
+  }
 
   /* For each of the following modifiers, use what you learned about modifiers
    to give them functionality. For example, the forSale modifier should require
    that the item with the given sku has the state ForSale. */
-  modifier forSale (uint _sku) { if (State.ForSale == items[_sku].state) _ ;}
-  modifier sold (uint _sku) { if (State.Sold == items[_sku].state) _ ;}
-  modifier shipped (uint _sku) { if (State.Shipped == items[_sku].state) _ ;}
-  modifier received (uint _sku) { if (State.Received == items[_sku].state) _ ;}
+  modifier forSale (uint _sku) { require(State.ForSale == items[_sku].state); _ ;}
+  modifier sold (uint _sku) { require(State.Sold == items[_sku].state); _ ;}
+  modifier shipped (uint _sku) { require(State.Shipped == items[_sku].state); _ ;}
+  modifier received (uint _sku) { require(State.Received == items[_sku].state); _ ;}
 
 
   function Amazon() {
@@ -63,9 +70,9 @@ contract Amazon {
   }
 
   function addItem(string _name, uint _price) {
-    ForSale(skuCount);
     skuCount = skuCount + 1;
     items[skuCount] = Item({name: _name, sku: skuCount, price: _price, state: State.ForSale, seller: msg.sender, buyer: msg.sender});
+    ForSale(skuCount);
   }
 
   /* Add a keyword so the function can be paid. This function should transfer money
@@ -78,10 +85,10 @@ contract Amazon {
   forSale(sku)
   paidEnough(items[sku].price)
   checkValue(items[sku].price){
-    Sold(sku);
     items[sku].seller.transfer(msg.value);
     items[sku].buyer = msg.sender;
     items[sku].state = State.Sold;
+    Sold(sku);
   }
 
   /* Add 2 modifiers to check if the item is sold already, and that the person calling this function
@@ -89,8 +96,8 @@ contract Amazon {
   function shipItem(uint sku)
   isOwner(items[sku].seller)
   sold(sku) {
-    Shipped(sku);
     items[sku].state = State.Shipped;
+    Shipped(sku);
   }
 
   /* Add 2 modifiers to check if the item is shipped already, and that the person calling this function
@@ -98,8 +105,8 @@ contract Amazon {
   function receiveItem(uint sku)
   isOwner(items[sku].buyer)
   shipped(sku) {
-    Received(sku);
     items[sku].state = State.Received;
+    Received(sku);
   }
 
   /* We have this function completed so we can run tests, just ignore it :) */
